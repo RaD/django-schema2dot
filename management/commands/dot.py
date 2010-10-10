@@ -55,25 +55,50 @@ class Command(NoArgsCommand):
         dot = []
         cluster_list = []
         fk_list = []
+        mm_list = []
+
         for model in list(models):
-            model_name = model._meta.object_name
+            model_name = '%s_%s' % (model._meta.app_label, model._meta.object_name)
             field_list = []
+
             for field in model._meta.fields:
                 field_name = field.name
                 field_list.append({'column_name': field_name,
                                    'data_type': field.get_internal_type(),
                                    'data_length': field.max_length or ''})
                 if field.rel:
-                    rel_model = field.rel.to._meta.object_name
+                    rel_model = '%s_%s' % (field.rel.to._meta.app_label, field.rel.to._meta.object_name)
                     rel_field = field.rel.field_name
                     fk_list.append('%(model_name)s:%(field_name)s -> %(rel_model)s:%(rel_field)s;' % locals())
+
+            for m2m in model._meta.get_m2m_with_model():
+                mo, unknown = m2m
+
+                field_name = mo.name
+                # print
+                # print dir(mo.rel)
+                # print model_name, mo.rel.get_related_field().name
+                # print
+                rel_model = '%s_%s' % (mo.related.model._meta.app_label, mo.rel.to._meta.object_name)
+                rel_field = mo.rel.get_related_field().name
+
+                field_list.append({'column_name': field_name,
+                                   'data_type': 'ManyToMany',
+                                   'data_length': ''})
+
+                mm_list.append('%(model_name)s:%(field_name)s -> %(rel_model)s:%(rel_field)s[color=blue, dir=both];' % locals())
+
             cluster_list.append(dot_cluster(model_name, field_list))
 
         cursor.close()
         connection.close()
 
+        dot.append('\n# clusters definition\n')
         map(lambda x: dot.append(x), cluster_list)
+        dot.append('\n# foreign keys definition\n')
         map(lambda x: dot.append(x), fk_list)
+        dot.append('\n# manytomany keys definition\n')
+        map(lambda x: dot.append(x), mm_list)
 
         f = open('schema.dot', 'w')
         f.writelines(digraph % {'content': '\n'.join(dot)})
@@ -82,4 +107,4 @@ class Command(NoArgsCommand):
         print 'Usage:'
         print '  dot -Tsvg schema.dot > schema.dot.svg'
         print ' or'
-        print '  fdp -Tsvg schema.dot > schema.dot.svg'
+        print '  fdp -Tsvg schema.dot > schema.fdp.svg'
