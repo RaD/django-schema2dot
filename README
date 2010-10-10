@@ -1,0 +1,8 @@
+Django application that can export project's database schema into .dot format of Graphviz.
+
+Add 'django-schema2dot' into your settings.py.
+Run 'python ./manage.py syncdb' before using this application.
+Use 'python ./manage.py dot' to export an information of project's schema.
+
+--
+Ruslan Popov <ruslan.popov@gmail.com>, 2010
